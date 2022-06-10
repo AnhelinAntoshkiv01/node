@@ -1,47 +1,62 @@
-const fs = require('fs');
-const path = require("path");
+const express = require('express');
+const users = require('./db/users');
 
-const sortBoysFolder = () => {
-    fs.readdir('./boys', (err, files) => {
-        if (err) return console.log(err);
+const app = express();
 
-        files.forEach((file) => {
-            const redFolderPath = path.join(__dirname, 'boys', file)
-            fs.readFile(redFolderPath,(err, data) => {
-                if (err) return console.log(err);
+app.get('/users', (req, res) => {
+    res.json(users)
+})
 
-                const user = JSON.parse(data.toString());
+app.get('/users/:userId', (req, res) => {
+    const userIndex = +req.params.userId;
 
-                if (user.gender === 'female') {
-                    fs.rename(redFolderPath, path.join(__dirname, 'girls', file), (err) => {
-                        if (err) return console.log(err)
-                    })
-                }
-            })
-        })
-    })
-}
+    if (isNaN(userIndex) || userIndex < 0) {
+        res.status(400).json('Enter valid id');
+        return;
+    }
 
-const sortGirlsFolder = () => {
-    fs.readdir('./girls', (err, files) => {
-        if (err) return console.log(err);
+    const user = users[userIndex];
 
-        files.forEach((file) => {
-            const redFolderPath = path.join(__dirname, 'girls', file)
-            fs.readFile(redFolderPath,(err, data) => {
-                if (err) return console.log(err);
+    if (!user) {
+        res.status(404).json(`Use with id ${userIndex}`);
+        return;
+    }
+    res.json(user);
+});
 
-                const user = JSON.parse(data.toString());
+app.get('/users/create/:userId', (req, res) => {
+    const newUser = users.push({
+        name: 'Viki'
+    });
+    const newUsersArr = [...users, newUser];
+    res.status(201).json(newUsersArr)
+});
 
-                if (user.gender === 'male') {
-                    fs.rename(redFolderPath, path.join(__dirname, 'boys', file), (err) => {
-                        if (err) return console.log(err)
-                    })
-                }
-            })
-        })
-    })
-}
+app.get('/users/update/:userId', (req, res) => {
+    const {userId} = req.params;
+    const {name} = req.body;
 
-sortBoysFolder();
-sortGirlsFolder();
+    const index = users.findIndex((user) => user.id === +userId);
+
+    const updateUser = Object.assign(users[index], name);
+    const newUserArr = [...users, updateUser]
+
+    res.status(201).json(newUserArr)
+});
+
+app.get('/users/delete/:userId', (req, res) => {
+    const {userId} = req.params;
+
+    const index = users.findIndex((user) => user.id === +userId);
+
+    if (!index) {
+        return res.status(400).json(`User with id ${userId} not found`)
+    }
+    const deleteUser = users.splice(index, 1);
+
+    res.status(204).json(deleteUser)
+});
+
+app.listen(5000, () => {
+    console.log('Port 5000')
+})
